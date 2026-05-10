@@ -5,7 +5,7 @@ from pytest_django.asserts import assertRedirects, assertFormError
 from django.urls import reverse
 
 from news.forms import BAD_WORDS, WARNING
-from news.models import Comment, News
+from news.models import Comment
 
 COMMENT_TEXT = 'Текст комментария'
 
@@ -55,29 +55,30 @@ def test_user_cant_use_bad_words(author_client, news_pk_for_args):
     assert comments_count == 0
 
 
-def test_author_can_delete_comment(
-    author_client, comment_pk_for_args, news_pk_for_args
+@pytest.mark.parametrize(
+    'parametrized_client, expected_status, expected_comments_count',
+    (
+        (pytest.lazy_fixture('author_client'), HTTPStatus.FOUND, 0),
+        (pytest.lazy_fixture('not_author_client'), HTTPStatus.NOT_FOUND, 1),
+    ),
+)
+def test_deletion_comments_by_different_users(
+    author_client,
+    parametrized_client,
+    expected_status,
+    expected_comments_count,
+    comment_pk_for_args,
+    news_pk_for_args,
 ):
     delete_url = reverse('news:delete', args=comment_pk_for_args)
-    response = author_client.delete(delete_url)
+    response = parametrized_client.delete(delete_url)
 
-    news_url = reverse('news:detail', args=news_pk_for_args)
-    url_to_comments = news_url + '#comments'
-    assertRedirects(response, url_to_comments)
-
-    assert response.status_code == HTTPStatus.FOUND
+    assert response.status_code == expected_status
 
     comments_count = Comment.objects.count()
-    assert comments_count == 0
+    assert comments_count == expected_comments_count
 
-
-def test_user_cant_delete_comment_of_another_user(
-    not_author_client, comment_pk_for_args
-):
-    delete_url = reverse('news:delete', args=comment_pk_for_args)
-    response = not_author_client.delete(delete_url)
-
-    assert response.status_code == HTTPStatus.NOT_FOUND
-
-    comments_count = Comment.objects.count()
-    assert comments_count == 1
+    if parametrized_client is author_client:
+        news_url = reverse('news:detail', args=news_pk_for_args)
+        url_to_comments = news_url + '#comments'
+        assertRedirects(response, url_to_comments)
