@@ -3,9 +3,10 @@ from datetime import datetime, timedelta
 import pytest
 from django.test.client import Client
 from django.utils import timezone
+from django.urls import reverse
 
 from news.models import News, Comment
-from yanews import settings
+from django.conf import settings
 
 
 @pytest.fixture
@@ -36,32 +37,18 @@ def not_author_client(not_author):
 
 @pytest.fixture
 def news():
-    news = News.objects.create(
+    return News.objects.create(
         title='Заголовок', text='Текст новости', date=datetime.now()
     )
-
-    return news
-
-
-@pytest.fixture
-def news_pk_for_args(news):
-    return (news.pk,)
 
 
 @pytest.fixture
 def comment(author, news):
-    comment = Comment.objects.create(
+    return Comment.objects.create(
         news=news,
         author=author,
         text='Текст комментария',
     )
-
-    return comment
-
-
-@pytest.fixture
-def comment_pk_for_args(comment):
-    return (comment.pk,)
 
 
 @pytest.fixture
@@ -92,3 +79,38 @@ def comments(django_user_model, news, author):
 
         comment.created = now + timedelta(days=index)
         comment.save()
+
+
+@pytest.fixture
+def home_url():
+    return reverse('news:home')
+
+
+@pytest.fixture
+def news_detail_url(news):
+    return reverse('news:detail', args=(news.pk,))
+
+
+@pytest.fixture
+def comment_delete_url(comment):
+    return reverse('news:delete', args=(comment.pk,))
+
+
+@pytest.fixture
+def comment_edit_url(comment):
+    return reverse('news:edit', args=(comment.pk,))
+
+
+@pytest.fixture
+def login_url():
+    return reverse('users:login')
+
+
+@pytest.fixture
+def logout_url():
+    return reverse('users:logout')
+
+
+@pytest.fixture
+def signup_url():
+    return reverse('users:signup')

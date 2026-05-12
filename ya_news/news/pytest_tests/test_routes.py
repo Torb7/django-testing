@@ -2,24 +2,24 @@ from http import HTTPStatus
 
 import pytest
 from pytest_django.asserts import assertRedirects
-from django.urls import reverse
+
+HOME_URL = pytest.lazy_fixture('home_url')
+NEWS_DETAIL_URL = pytest.lazy_fixture('news_detail_url')
+COMMENT_EDIT_URL = pytest.lazy_fixture('comment_edit_url')
+COMMENT_DELETE_URL = pytest.lazy_fixture('comment_delete_url')
+LOGIN_URL = pytest.lazy_fixture('login_url')
+LOGOUT_URL = pytest.lazy_fixture('logout_url')
+SIGNUP_URL = pytest.lazy_fixture('signup_url')
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    'name, args',
-    (
-        ('news:home', None),
-        ('news:detail', pytest.lazy_fixture('news_pk_for_args')),
-        ('users:login', None),
-        ('users:signup', None),
-        ('users:logout', None),
-    ),
+    'url',
+    (HOME_URL, NEWS_DETAIL_URL, LOGIN_URL, LOGOUT_URL, SIGNUP_URL),
 )
-def test_pages_availability_for_anonymous_user(client, name, args):
-    url = reverse(name, args=args)
+def test_pages_availability_for_anonymous_user(client, url, logout_url):
 
-    if name == 'users:logout':
+    if url == logout_url:
         response = client.post(url)
     else:
         response = client.get(url)
@@ -34,21 +34,17 @@ def test_pages_availability_for_anonymous_user(client, name, args):
         (pytest.lazy_fixture('not_author_client'), HTTPStatus.NOT_FOUND),
     ),
 )
-@pytest.mark.parametrize('name', ('news:edit', 'news:delete'))
+@pytest.mark.parametrize('url', (COMMENT_EDIT_URL, COMMENT_DELETE_URL))
 def test_pages_availability_for_different_users(
-    parametrized_client, name, expected_status, comment
+    parametrized_client, expected_status, url
 ):
-    url = reverse(name, args=(comment.pk,))
     response = parametrized_client.get(url)
 
     assert response.status_code == expected_status
 
 
-@pytest.mark.parametrize('name', ('news:edit', 'news:delete'))
-def test_redirects(client, name, comment_pk_for_args):
-    login_url = reverse('users:login')
-
-    url = reverse(name, args=comment_pk_for_args)
+@pytest.mark.parametrize('url', (COMMENT_EDIT_URL, COMMENT_DELETE_URL))
+def test_redirects(client, url, login_url):
     response = client.get(url)
 
     expected_url = f'{login_url}?next={url}'
