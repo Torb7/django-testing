@@ -1,33 +1,28 @@
 from http import HTTPStatus
 
-from django.test import TestCase
-from django.urls import reverse
-from django.contrib.auth import get_user_model
+from notes.tests.mixins import TestBaseClass
+from notes.tests.constants import (
+    HOME_URL,
+    LIST_NOTES_URL,
+    DETAIL_NOTE_URL,
+    ADD_NOTE_URL,
+    EDIT_NOTE_URL,
+    DELETE_NOTE_URL,
+    EXPECTED_SUCCESS_URL,
+    LOGIN_URL,
+    LOGOUT_URL,
+    SIGNUP_URL,
+)
 
-from notes.models import Note
 
-User = get_user_model()
-
-
-class TestRoutes(TestCase):
-
-    @classmethod
-    def setUpTestData(cls):
-        cls.author = User.objects.create(username='Автор')
-        cls.not_author = User.objects.create(username='Не автор')
-
-        cls.note = Note.objects.create(
-            title='Заголовок', text='Текст', author=cls.author
-        )
+class TestRoutes(TestBaseClass):
 
     def test_pages_availability(self):
-        urls = ('notes:home', 'users:login', 'users:logout', 'users:signup')
+        urls = (HOME_URL, LOGIN_URL, LOGOUT_URL, SIGNUP_URL)
 
-        for name in urls:
-            with self.subTest(name=name):
-                url = reverse(name)
-
-                if name == 'users:logout':
+        for url in urls:
+            with self.subTest(url=url):
+                if url == LOGOUT_URL:
                     response = self.client.post(url)
                 else:
                     response = self.client.get(url)
@@ -35,50 +30,43 @@ class TestRoutes(TestCase):
                 self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_pages_availability_for_auth_user(self):
-        urls = ('notes:list', 'notes:add', 'notes:success')
+        urls = (LIST_NOTES_URL, ADD_NOTE_URL, EXPECTED_SUCCESS_URL)
 
-        for name in urls:
-            with self.subTest(name=name):
-                url = reverse(name)
-
-                self.client.force_login(self.author)
-                response = self.client.get(url)
+        for url in urls:
+            with self.subTest(url=url):
+                response = self.author_client.get(url)
 
                 self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_pages_availability_for_different_users(self):
-        urls = ('notes:detail', 'notes:edit', 'notes:delete')
+        urls = (DETAIL_NOTE_URL, EDIT_NOTE_URL, DELETE_NOTE_URL)
 
         users_statuses = (
-            (self.author, HTTPStatus.OK),
-            (self.not_author, HTTPStatus.NOT_FOUND),
+            (self.author_client, HTTPStatus.OK),
+            (self.not_author_client, HTTPStatus.NOT_FOUND),
         )
 
-        for user, status in users_statuses:
-            self.client.force_login(user)
+        for auth_client, status in users_statuses:
 
-            for name in urls:
-                with self.subTest(user=user, name=name):
-                    url = reverse(name, args=(self.note.slug,))
-                    response = self.client.get(url)
+            for url in urls:
+                with self.subTest(user=auth_client, url=url):
+                    response = auth_client.get(url)
 
                     self.assertEqual(response.status_code, status)
 
     def test_redirects(self):
-        urls_with_args = (
-            ('notes:detail', (self.note.slug,)),
-            ('notes:edit', (self.note.slug,)),
-            ('notes:delete', (self.note.slug,)),
-            ('notes:add', None),
-            ('notes:success', None),
-            ('notes:list', None),
+        urls = (
+            LIST_NOTES_URL,
+            DETAIL_NOTE_URL,
+            ADD_NOTE_URL,
+            EDIT_NOTE_URL,
+            DELETE_NOTE_URL,
+            EXPECTED_SUCCESS_URL,
         )
-        login_url = reverse('users:login')
 
-        for name, args in urls_with_args:
-            with self.subTest(name=name):
-                url = reverse(name, args=args)
+        for url in urls:
+            with self.subTest(url=url):
                 response = self.client.get(url)
 
-                expected_url = f'{login_url}?next={url}'
+                expected_url = f'{LOGIN_URL}?next={url}'
                 self.assertRedirects(response, expected_url)
