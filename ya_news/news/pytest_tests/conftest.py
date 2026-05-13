@@ -4,9 +4,9 @@ import pytest
 from django.test.client import Client
 from django.utils import timezone
 from django.urls import reverse
+from django.conf import settings
 
 from news.models import News, Comment
-from django.conf import settings
 
 
 @pytest.fixture
