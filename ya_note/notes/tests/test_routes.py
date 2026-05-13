@@ -1,7 +1,7 @@
 from http import HTTPStatus
 
-from notes.tests.mixins import TestBaseClass
-from notes.tests.constants import (
+from notes.tests.base import (
+    TestBaseClass,
     HOME_URL,
     LIST_NOTES_URL,
     DETAIL_NOTE_URL,
